@@ -1,0 +1,66 @@
+# Deploy the shop stack to a Linux Docker host.
+#   ansible-playbook deploy.yml -e shop_env=prod -e shop_tag=1a2b3c4d -e shop_registry=docker.io/youruser
+# The images must already be in a registry the host can pull from (the Jenkins push stage does that).
+- name: Deploy shop stack
+  hosts: shop_hosts
+  become: true
+  vars:
+    shop_env: dev
+    shop_tag: dev
+    shop_registry: shop
+    shop_dir: /opt/shop
+    shop_ports: { dev: 8090, test: 8091, staging: 8092, prod: 8093 }
+
+  tasks:
+    - name: Install Docker engine and compose plugin (Ubuntu 24.04)
+      ansible.builtin.apt:
+        name: [docker.io, docker-compose-v2]
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Make sure Docker is running
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Create application directory
+      ansible.builtin.file:
+        path: "{{ shop_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Copy compose file
+      ansible.builtin.copy:
+        src: ../docker-compose.yml
+        dest: "{{ shop_dir }}/docker-compose.yml"
+        mode: "0644"
+
+    - name: Copy environment file (secrets would come from Ansible Vault in real life)
+      ansible.builtin.copy:
+        src: "../env/{{ shop_env }}.env"
+        dest: "{{ shop_dir }}/{{ shop_env }}.env"
+        mode: "0600"
+
+    - name: Start or update the stack
+      ansible.builtin.command:
+        cmd: >
+          docker compose -p shop-{{ shop_env }}
+          --env-file {{ shop_dir }}/{{ shop_env }}.env
+          -f {{ shop_dir }}/docker-compose.yml
+          up -d --wait --wait-timeout 180
+      environment:
+        TAG: "{{ shop_tag }}"
+        REGISTRY: "{{ shop_registry }}"
+      register: compose_result
+      changed_when: "'Started' in compose_result.stderr or 'Recreate' in compose_result.stderr or 'Created' in compose_result.stderr"
+
+    - name: Check the application answers
+      ansible.builtin.uri:
+        url: "http://localhost:{{ shop_ports[shop_env] }}/api/ready"
+        status_code: 200
+      register: ready
+      retries: 10
+      delay: 3
+      until: ready.status == 200

@@ -1,0 +1,20 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate compose files
+        run: |
+          for e in dev test staging prod; do
+            TAG=ci docker compose --env-file env/$e.env -f docker-compose.yml config -q
+          done
+      - name: Unit tests (Docker test stage)
+        run: docker build --target test api
+      - name: Build images
+        run: TAG=${{ github.sha }} bash scripts/build.sh ${{ github.sha }}

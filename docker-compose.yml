@@ -1,28 +1,55 @@
+# One compose file, four environments.
+# The environment is chosen with:   -p shop-<env>  --env-file env/<env>.env
+# The image version is chosen with: TAG=<tag>
 services:
-  api:
-    build: .
-    ports:
-      - "8080:8000"
-    environment:
-      DB_HOST: db
-      DB_NAME: postgres
-      DB_USER: postgres
-      DB_PASSWORD: labpassword123
-    depends_on:
-      db:
-        condition: service_healthy
-
   db:
     image: postgres:16
+    restart: unless-stopped
     environment:
-      POSTGRES_PASSWORD: labpassword123
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - dbdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
       timeout: 3s
-      retries: 10
+      retries: 15
+
+  api:
+    image: ${REGISTRY:-shop}/shop-api:${TAG:-dev}
+    build:
+      context: ./api
+      target: runtime
+      args:
+        APP_VERSION: ${TAG:-dev}
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV}
+      DB_HOST: db
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+    mem_limit: 256m
+
+  web:
+    image: ${REGISTRY:-shop}/shop-web:${TAG:-dev}
+    build:
+      context: ./web
+      target: runtime
+      args:
+        APP_VERSION: ${TAG:-dev}
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    mem_limit: 128m
 
 volumes:
   dbdata:

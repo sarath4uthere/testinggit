@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shop Lab</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Shop Lab</h1>
+    <span id="env-badge" class="badge">...</span>
+  </header>
+
+  <main>
+    <section>
+      <h2>Products</h2>
+      <table>
+        <thead><tr><th>ID</th><th>Name</th><th>Price</th><th>Stock</th><th>Order</th></tr></thead>
+        <tbody id="product-rows"></tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Add product</h2>
+      <form id="product-form">
+        <input id="p-name" placeholder="Name" required maxlength="100">
+        <input id="p-price" type="number" step="0.01" min="0" placeholder="Price" required>
+        <input id="p-stock" type="number" min="0" step="1" placeholder="Stock" required>
+        <button type="submit">Add</button>
+      </form>
+    </section>
+
+    <p id="message" role="status"></p>
+  </main>
+
+  <footer>
+    web version <strong>__APP_VERSION__</strong> &middot;
+    api version <strong id="api-version">?</strong>
+  </footer>
+  <script src="app.js"></script>
+</body>
+</html>
