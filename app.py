@@ -37,7 +37,7 @@ def init_db():
                 "text TEXT NOT NULL, "
                 "created_at TIMESTAMP DEFAULT now())"
             )
-            print("database ready", flush=True)
+            print("database ready next 2", flush=True)
             return
         except Exception as e:
             print("waiting for database:", e, flush=True)
